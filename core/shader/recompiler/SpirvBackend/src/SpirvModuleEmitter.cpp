@@ -189,7 +189,7 @@ std::uint32_t EmitInterpolationParameterValue(SpirvEmitterState& state, std::uin
     };
     const auto selectedVertex = (mode + 1u) % 3u;
     std::uint32_t value = loadVertex(selectedVertex);
-    if (!PixelParameterIsCustom(state, attr) && mode < 2u) {
+    if (!PixelParameterIsCustom(state, attr) && !PixelParameterIsFlat(state, attr) && mode < 2u) {
         const auto delta = state.module.AllocateId();
         state.module.AddFunction(spv::OpFSub, TypeF32(state), delta, value, loadVertex(0u));
         value = delta;
