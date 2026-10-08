@@ -268,6 +268,23 @@ int APS5_VABI _close_nid_postfix(int descriptor) {
     return close_nid_postfix(descriptor);
 }
 
+int APS5_VABI dup2_nid_postfix(int from, int to) {
+    if (from < 0 || to < 0) return PosixFailure(EBADF);
+    if (from >= GuestSockets::FirstDescriptor || to >= GuestSockets::FirstDescriptor)
+        throw std::runtime_error("dup2: socket descriptors are not implemented");
+#ifdef _WIN32
+    if (File::DirectoryDescriptorPath(from)) throw std::runtime_error("dup2: directory descriptors are not implemented");
+    if (_get_osfhandle(from) == -1) return PosixFailure(EBADF);
+    if (from == to) return to;
+    File::ForgetDirectoryDescriptor(to);
+    if (_dup2(from, to) != 0) return PosixFailure(errno);
+    return to;
+#else
+    const int result = ::dup2(from, to);
+    return result < 0 ? PosixFailure(errno) : result;
+#endif
+}
+
 int APS5_VABI flock_nid_postfix(int d, int operation) {
     if (NativeFlock(d, operation) != 0) {
 #ifdef _WIN32
