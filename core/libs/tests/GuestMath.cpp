@@ -13,6 +13,7 @@ double APS5_VABI atof_nid_postfix(const char*);
 float APS5_VABI strtof_nid_postfix(const char*, char**);
 long double APS5_VABI strtold_nid_postfix(const char*, char**);
 std::int64_t APS5_VABI strtol_nid_postfix(const char*, char**, int);
+std::int64_t APS5_VABI atol_nid_postfix(const char*);
 std::uint64_t APS5_VABI strtoul_nid_postfix(const char*, char**, int);
 std::intmax_t APS5_VABI strtoimax_nid_postfix(const char*, char**, int);
 int* APS5_VABI __error_nid_postfix();
@@ -134,6 +135,10 @@ static void CheckIntegerConversions() {
     }
     *__error_nid_postfix() = 13;
     Require(strtol_nid_postfix("-4294967296", nullptr, 10) == -INT64_C(4294967296));
+    Require(atol_nid_postfix(" -4294967296x") == -INT64_C(4294967296));
+    Require(atol_nid_postfix("+9223372036854775807") == INT64_MAX);
+    Require(atol_nid_postfix("0x10") == 0);
+    Require(atol_nid_postfix("") == 0);
     Require(*__error_nid_postfix() == 13);
     Require(strtoul_nid_postfix("4294967296", nullptr, 10) == UINT64_C(4294967296));
     Require(*__error_nid_postfix() == 13);
