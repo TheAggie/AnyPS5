@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 extern "C" {
@@ -10,6 +11,7 @@ int APS5_VABI scePthreadJoin(Pthread thread, void** retval);
 Pthread APS5_VABI scePthreadSelf();
 int APS5_VABI _sceLibcInternalThreadAtexit_nid_postfix(void (APS5_VABI* destructor)(void*), void* object, void* dsoSymbol);
 void APS5_VABI _sceLibcInternalThreadDtors_nid_postfix();
+const char* APS5_VABI getprogname_nid_postfix();
 }
 
 namespace {
@@ -56,6 +58,7 @@ bool DestructorsThrow() {
 }
 
 int main() {
+    Require(std::string(getprogname_nid_postfix()) == "eboot.bin");
     const Pthread mainThread = scePthreadSelf();
     Require(Register(Record, 1) == 0);
     Require(Register(RecordAndRegister, 2) == 0);

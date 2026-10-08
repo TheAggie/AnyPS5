@@ -104,6 +104,10 @@ extern "C" {
 
 int Need_sceLibcInternal_nid_postfix = 1;
 
+const char* APS5_VABI getprogname_nid_postfix() {
+    return "eboot.bin";
+}
+
 void APS5_VABI __cxa_finalize_nid_postfix(void* dsoHandle) {
     CxaFinalize_nid_no_patch(dsoHandle);
 }
