@@ -11,6 +11,7 @@
 #include "prx/libkernel/File/include/DirectoryDescriptor.hpp"
 #include "prx/libkernel/KernelErrors.hpp"
 #include "prx/libkernel/Socket/include/SocketRuntime.hpp"
+#include <atomic>
 #include <cerrno>
 #include <cstring>
 #include <cstdarg>
@@ -268,6 +269,36 @@ int APS5_VABI _close_nid_postfix(int descriptor) {
     return close_nid_postfix(descriptor);
 }
 
+}
+
+namespace {
+std::atomic<int> g_hostStandardError{-1};
+
+void PreserveHostStandardError() {
+    if (g_hostStandardError.load() >= 0) return;
+#ifdef _WIN32
+    const int saved = _dup(2);
+#else
+    const int saved = ::dup(2);
+#endif
+    if (saved < 0) throw std::runtime_error("dup2: cannot keep the host standard error");
+    int expected = -1;
+    if (!g_hostStandardError.compare_exchange_strong(expected, saved)) {
+#ifdef _WIN32
+        _close(saved);
+#else
+        ::close(saved);
+#endif
+    }
+}
+}
+
+int File::HostStandardError() {
+    return g_hostStandardError.load();
+}
+
+extern "C" {
+
 int APS5_VABI dup2_nid_postfix(int from, int to) {
     if (from < 0 || to < 0) return PosixFailure(EBADF);
     if (from >= GuestSockets::FirstDescriptor || to >= GuestSockets::FirstDescriptor)
@@ -276,10 +307,12 @@ int APS5_VABI dup2_nid_postfix(int from, int to) {
     if (File::DirectoryDescriptorPath(from)) throw std::runtime_error("dup2: directory descriptors are not implemented");
     if (_get_osfhandle(from) == -1) return PosixFailure(EBADF);
     if (from == to) return to;
+    if (to == 2) PreserveHostStandardError();
     File::ForgetDirectoryDescriptor(to);
     if (_dup2(from, to) != 0) return PosixFailure(errno);
     return to;
 #else
+    if (from != to && to == 2) PreserveHostStandardError();
     const int result = ::dup2(from, to);
     return result < 0 ? PosixFailure(errno) : result;
 #endif

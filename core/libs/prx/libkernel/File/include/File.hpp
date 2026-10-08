@@ -19,4 +19,8 @@ int APS5_VABI sceKernelUnlink(const char* path);
 
 }
 
+namespace File {
+int HostStandardError();
+}
+
 #endif
