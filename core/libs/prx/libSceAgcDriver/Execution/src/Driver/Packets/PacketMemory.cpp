@@ -301,13 +301,13 @@ void Driver::commitDmaStore(std::uint32_t queue, std::uint64_t address, std::spa
         reason = localDevice->WriteLabelOnGpu(address, bytes, stamp, queue);
     }
     if (reason == 0 || reason == 5 || reason == 6) {
-        noteLabelStore(address, bytes, stamp);
+        noteLabelStore(address, bytes, stamp, queue);
         if (reason == 0) ++storesOnGpu;
         else ++storesBehindCompletions;
     } else {
         if (reason != 1 && localDevice != nullptr) localDevice->WaitIdle();
         GuestMemory::Write(address, bytes, 1);
-        noteLabelStore(address, bytes, stamp != 0 ? stamp : ++eventSerial);
+        noteLabelStore(address, bytes, stamp != 0 ? stamp : ++eventSerial, queue);
         ++storesOnCpu;
     }
     Graphics::Recorder::CloseLabelGroup(GuestMemory::TrackerGeneration());
@@ -316,7 +316,8 @@ void Driver::commitDmaStore(std::uint32_t queue, std::uint64_t address, std::spa
 bool Driver::enqueueLabelPacket(std::span<const std::uint32_t> packet, std::uint32_t opcode, std::uint32_t queue) {
     static const bool ordered = std::getenv("APS5_PIPELINE_DRAIN_LABELS") == nullptr;
     if (!ordered || !DeferLabels() || (opcode != 0x49 && opcode != 0x37)) return false;
-    const bool endOfPipeInterrupt = opcode == 0x49 && ((packet[2] >> 24u) & 7u) != 0;
+    const auto interruptSelect = opcode == 0x49 ? (packet[2] >> 24u) & 7u : 0u;
+    const bool endOfPipeInterrupt = interruptSelect != 0 && interruptSelect != 3;
     const auto label = Pm4::DecodeLabelWrite(packet);
     if (!label.has_value()) {
         if (opcode != 0x49) return false;
@@ -359,7 +360,7 @@ void Driver::commitLabel(std::uint32_t queue, std::uint64_t address, std::span<c
             if (reason != 1 && localDevice != nullptr) localDevice->WaitIdle();
             GuestMemory::Write(address, bytes, 4);
         }
-        noteLabelStore(address, bytes, stamp);
+        noteLabelStore(address, bytes, stamp, queue);
         Graphics::Recorder::CloseLabelGroup(GuestMemory::TrackerGeneration());
         countLabelOutcome(reason);
         ++immediateLabels;
